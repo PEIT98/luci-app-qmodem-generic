@@ -3,6 +3,12 @@
 本文件记录 `luci-app-qmodem-generic` 的版本变更。版本号格式为
 `v<PKG_VERSION>-<PKG_RELEASE>-build<运行号>`，与 GitHub Actions 自动发布的 Release 对应。
 
+## [3.0.0-8] - 2026-11-06
+
+- 修复二次元皮肤下高级页白底白字、APN 表单控件过宽，以及连接页扩展卡片留出大片空白的问题。
+- 外观配色同步到旧版紫色按钮和标题；手动明暗模式同时切换背景网格、角色图片、卡片与文字。自动模式优先识别 LuCI 明暗标识。
+- 保留 QModem 的 APN 字段、依赖显隐、服务操作与现有配置；只调整页面样式和扩展卡片的显示顺序。
+
 ## [3.0.0-7] - 2026-11-01
 
 - 修复（前端·概览页白屏）：`render()` 抛 `TypeError: L.bind is not a function` —— 1s 网卡计数轮询、10s 射频采样轮询与邻区扫描回调都用了旧版 LuCI 的 `L.bind()`，新版 `luci.js` 已不再导出该助手；改用原生 `Function.prototype.bind`，与其余七个视图的写法一致。

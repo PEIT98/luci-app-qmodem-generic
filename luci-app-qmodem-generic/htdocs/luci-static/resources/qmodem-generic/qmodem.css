@@ -6283,3 +6283,222 @@ html { -webkit-text-size-adjust: 100%; }
   color: rgba(255, 255, 255, 0.88) !important;
   -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
 }
+
+/* v2.43.1 二次元皮肤与外观选择联动，仅作用于 QModem 页面。 */
+body.qm-app {
+  --mt5700-accent: var(--qm-accent) !important;
+  --mt5700-accent-light: var(--qm-accent-2) !important;
+  --mt5700-accent-pale: var(--qm-accent-soft) !important;
+  --mt5700-cyan: var(--qm-accent-2) !important;
+  --mt5700-border: var(--qm-border) !important;
+  --mt5700-border-subtle: var(--qm-border-soft) !important;
+  --mt5700-subtle-bg: var(--qm-surface-3) !important;
+  --mt5700-text: var(--qm-text) !important;
+  --mt5700-text-secondary: var(--qm-text-soft) !important;
+  --mt5700-text-muted: var(--qm-text-muted) !important;
+}
+body.qm-app.qm-light {
+  --mt5700-card-bg: rgba(255,255,255,.84) !important;
+  --mt5700-card-bg-hover: rgba(255,255,255,.94) !important;
+}
+body.qm-app.qm-dark {
+  --mt5700-card-bg: rgba(19,35,55,.84) !important;
+  --mt5700-card-bg-hover: rgba(26,53,77,.92) !important;
+}
+body.qm-app.qm-dark #mt5700-global-bg {
+  background-image: url(/luci-static/resources/qmodem-generic/bg/triangle-grid-dark.webp) !important;
+}
+body.qm-app.qm-light #mt5700-global-bg {
+  background-image: url(/luci-static/resources/qmodem-generic/bg/triangle-grid-light.webp) !important;
+}
+body.qm-app.qm-dark .mt5700-app::before {
+  background: linear-gradient(rgba(13,17,30,.68),rgba(19,24,43,.68)) !important;
+}
+body.qm-app.qm-light .mt5700-app::before {
+  background: linear-gradient(rgba(245,243,255,.74),rgba(228,240,252,.74)) !important;
+}
+
+/* 高级页头部是浅色玻璃卡片，不使用其他页面的深色渐变 Hero 白字。 */
+.qm-app .mt-hardware-head.mt-hardware-head {
+  width: 100%;
+  background: var(--qm-surface-gradient) !important;
+  color: var(--qm-text) !important;
+}
+.qm-app .mt-hardware-head.mt-hardware-head h2,
+.qm-app .mt-hardware-head.mt-hardware-head h2.qm-page-title {
+  color: var(--qm-text) !important;
+  -webkit-text-fill-color: var(--qm-text) !important;
+  background: none !important;
+}
+.qm-app .mt-hardware-head.mt-hardware-head p {
+  color: var(--qm-text-muted) !important;
+  -webkit-text-fill-color: var(--qm-text-muted) !important;
+}
+
+/* 顶部标签在不同 LuCI 主题下保持同一套可读的选中态和窄屏横滑。 */
+.qm-app #tabmenu {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.qm-app #tabmenu :is(ul.tabs,ul.cbi-tabmenu) {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: nowrap !important;
+  gap: 6px;
+  min-width: max-content;
+  padding: 4px 0 10px !important;
+}
+.qm-app #tabmenu :is(.tabs,.cbi-tabmenu) > li {
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.qm-app #tabmenu :is(.tabs,.cbi-tabmenu) > li > a {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 8px 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: var(--qm-text-soft) !important;
+  text-decoration: none !important;
+}
+.qm-app #tabmenu :is(.tabs,.cbi-tabmenu) > li > a:hover {
+  background: var(--qm-accent-soft) !important;
+  color: var(--qm-accent) !important;
+}
+.qm-app #tabmenu :is(.tabs,.cbi-tabmenu) > :is(li.active,li.cbi-tab) > a {
+  background: var(--qm-accent-gradient) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-on-accent) !important;
+  box-shadow: 0 4px 12px var(--qm-accent-soft);
+}
+.qm-app #tabmenu :is(.tabs,.cbi-tabmenu) > :is(li.active,li.cbi-tab) > a svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* APN 表单保留 LuCI 的依赖显隐与 DynamicList 操作，只收敛布局和宽度。 */
+.qm-app .mtconn-config-card .cbi-value {
+  grid-template-columns: minmax(140px,190px) minmax(0,1fr) !important;
+  gap: 12px 18px !important;
+  padding: 12px 0 !important;
+}
+.qm-app .mtconn-config-card .cbi-value-field > input,
+.qm-app .mtconn-config-card .cbi-value-field > select,
+.qm-app .mtconn-config-card .cbi-value-field .cbi-input-text,
+.qm-app .mtconn-config-card .cbi-value-field .cbi-input-select,
+.qm-app .mtconn-config-card .cbi-value-field .cbi-dynlist {
+  width: 100% !important;
+  max-width: 520px !important;
+}
+.qm-app .mtconn-config-card .cbi-dynlist input {
+  max-width: 100% !important;
+}
+@media (max-width: 820px) {
+  .qm-app .mtconn-config-card .cbi-value {
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 6px !important;
+  }
+  .qm-app .mtconn-config-card .cbi-value-field > input,
+  .qm-app .mtconn-config-card .cbi-value-field > select,
+  .qm-app .mtconn-config-card .cbi-value-field .cbi-input-text,
+  .qm-app .mtconn-config-card .cbi-value-field .cbi-input-select,
+  .qm-app .mtconn-config-card .cbi-value-field .cbi-dynlist {
+    max-width: 100% !important;
+  }
+}
+
+/* 四张扩展卡：前三张同行，上联状态铺满下一行，避免孤立卡片。 */
+.qm-app .mtconn-page > .mt-control-grid {
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+}
+.qm-app .mtconn-page > .mt-control-grid > .mt-control-card.wide {
+  grid-column: 1 / -1 !important;
+}
+@media (max-width: 1100px) {
+  .qm-app .mtconn-page > .mt-control-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+  .qm-app .mtconn-page > .mt-control-grid > .mt-control-card:nth-child(3) {
+    grid-column: 1 / -1 !important;
+  }
+}
+@media (max-width: 680px) {
+  .qm-app .mtconn-page > .mt-control-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+
+/* 旧皮肤把紫色写死在按钮与标题上，此处统一读外观配色。 */
+.qm-app .mt5700-btn-primary,
+.qm-app .cbi-button-apply,
+.qm-app .cbi-button-action,
+.qm-app .mtconn-btn-primary,
+.qm-app .mt-sys-btn-primary,
+.qm-app .mt-sms-btn-primary {
+  background: var(--qm-accent-gradient) !important;
+  color: var(--qm-on-accent) !important;
+}
+.qm-app .mt5700-btn-primary:hover:not(:disabled),
+.qm-app .cbi-button-apply:hover:not(:disabled),
+.qm-app .cbi-button-action:hover:not(:disabled) {
+  background: var(--qm-accent-gradient) !important;
+  filter: brightness(1.08);
+}
+.qm-app .mt5700-card-title {
+  color: var(--qm-text) !important;
+}
+.qm-app .mt5700-card-title::before,
+.qm-app .mt5700-modal-title::before {
+  background: var(--qm-accent-gradient) !important;
+}
+.qm-app .mt5700-card-subtitle,
+.qm-app .mt5700-hero-desc {
+  color: var(--qm-text-muted) !important;
+}
+.qm-app .mt5700-modal-title,
+.qm-app .mt5700-modal-body {
+  color: var(--qm-text) !important;
+}
+.qm-app.qm-dark .mt5700-btn-secondary,
+.qm-app.qm-dark .cbi-button-neutral {
+  background: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+}
+/* 手动明暗选择优先于 LuCI 当前模式，输入框和表格同步切换。 */
+body.qm-app.qm-light :is(.mtconn-page,.mt-hardware,.mt-net,.mt-ui-page,.mt-system,.mt-terminal,.mt-sms,.mt-diag-page) :is(input:not([type="checkbox"]),select,textarea),
+body.qm-app.qm-dark :is(.mtconn-page,.mt-hardware,.mt-net,.mt-ui-page,.mt-system,.mt-terminal,.mt-sms,.mt-diag-page) :is(input:not([type="checkbox"]),select,textarea) {
+  background: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+  box-shadow: none !important;
+}
+body.qm-app.qm-light :is(.mtconn-page,.mt-hardware,.mt-net,.mt-ui-page,.mt-system,.mt-terminal,.mt-sms,.mt-diag-page) :is(input:not([type="checkbox"]),select,textarea):focus,
+body.qm-app.qm-dark :is(.mtconn-page,.mt-hardware,.mt-net,.mt-ui-page,.mt-system,.mt-terminal,.mt-sms,.mt-diag-page) :is(input:not([type="checkbox"]),select,textarea):focus {
+  border-color: var(--qm-accent) !important;
+  box-shadow: 0 0 0 3px var(--qm-accent-soft) !important;
+}
+body.qm-app.qm-light select option {
+  background: #fff !important;
+  color: #162b3d !important;
+}
+body.qm-app.qm-dark select option {
+  background: #1d2935 !important;
+  color: #e7f0f8 !important;
+}
+body.qm-app.qm-light .mt5700-table tr {
+  background: var(--qm-surface-2) !important;
+}
+body.qm-app.qm-dark .mt5700-table tr {
+  background: var(--qm-surface-2) !important;
+}
+body.qm-app.qm-light .mt5700-table td,
+body.qm-app.qm-dark .mt5700-table td {
+  color: var(--qm-text) !important;
+}

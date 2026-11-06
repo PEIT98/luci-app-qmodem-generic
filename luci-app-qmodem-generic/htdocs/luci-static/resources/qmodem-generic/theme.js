@@ -731,6 +731,13 @@ function luminance(value) {
 function detectTone() {
 	var dark = false, decided = false;
 	try {
+		var html = document.documentElement, body = document.body;
+		var explicit = (html.getAttribute('data-at-theme') || (body && body.getAttribute('data-at-theme')) || '').toLowerCase();
+		if (explicit === 'dark' || explicit === 'light')
+			return explicit;
+		if ((html.classList && html.classList.contains('at-dark')) ||
+			(body && body.classList && body.classList.contains('at-dark')))
+			return 'dark';
 		var root = window.getComputedStyle(document.documentElement);
 		var themeVar = (root.getPropertyValue('--background-color-normal') || '') ||
 			(root.getPropertyValue('--background-color-high') || '') ||
@@ -856,6 +863,40 @@ function mountGlobalBg() {
 	(document.body || document.documentElement).appendChild(layer);
 }
 
+function syncWallpaper(tone) {
+	var layer = document.getElementById('mt5700-global-bg');
+	if (!layer || !layer.querySelectorAll) return;
+	var images = layer.querySelectorAll('.mt-bg-char[data-kind]');
+	for (var i = 0; i < images.length; i++) {
+		var image = images[i];
+		var src = '/luci-static/resources/qmodem-generic/bg/character-' + image.getAttribute('data-kind') + '-' + tone + '.webp';
+		if (image.getAttribute('src') !== src) image.setAttribute('src', src);
+	}
+}
+
+var toneObserver = null, toneMediaListener = false;
+function watchHostTone() {
+	if (!toneObserver && typeof MutationObserver !== 'undefined') {
+		toneObserver = new MutationObserver(function() {
+			if (getAppearance().tone !== 'auto') return;
+			var body = document.body;
+			if (body && !body.classList.contains('qm-' + detectTone())) apply();
+		});
+		var options = { attributes: true, attributeFilter: [ 'class', 'data-at-theme', 'style' ] };
+		toneObserver.observe(document.documentElement, options);
+		if (document.body) toneObserver.observe(document.body, options);
+	}
+	if (!toneMediaListener && window.matchMedia) {
+		var media = window.matchMedia('(prefers-color-scheme: dark)');
+		if (media && media.addEventListener) {
+			media.addEventListener('change', function() {
+				if (getAppearance().tone === 'auto') apply();
+			});
+			toneMediaListener = true;
+		}
+	}
+}
+
 function apply() {
 	try {
 		/* MT5700 Soft Anime System Integration */
@@ -863,7 +904,7 @@ function apply() {
 			window._qmodem_css_injected = true;
 			var link = document.createElement('link');
 			link.rel = 'stylesheet';
-			link.href = '/luci-static/resources/qmodem-generic/qmodem.css?v=2.42.8';
+			link.href = '/luci-static/resources/qmodem-generic/qmodem.css?v=2.43.1';
 			document.head.appendChild(link);
 		}
 		mountGlobalBg();
@@ -872,6 +913,7 @@ function apply() {
 			return null;
 		injectOnce();
 		ensureNavTabIcons();
+		watchHostTone();
 		var body = document.body || document.documentElement;
 		if (body && body.classList) {
 			var appearance = getAppearance();
@@ -880,6 +922,7 @@ function apply() {
 			body.classList.remove('qm-light');
 			body.classList.remove('qm-dark');
 			body.classList.add('qm-' + tone);
+			syncWallpaper(tone);
 			body.setAttribute('data-qm-palette', appearance.palette);
 			body.setAttribute('data-qm-tone', appearance.tone);
 			if (body.style && body.style.setProperty) {

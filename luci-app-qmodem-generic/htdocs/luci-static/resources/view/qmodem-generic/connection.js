@@ -783,8 +783,8 @@ return view.extend({
 				E('div', { 'class': 'mt-control-grid', 'style': 'margin-bottom:16px' }, [
 					self.serviceCard(res),
 					self.monitorCard(res),
-					self.uplinkCard(res),
-					self.fiveGLanCard(res)
+					self.fiveGLanCard(res),
+					self.uplinkCard(res)
 				]),
 
 				/* 拨号设置 (APN) 白色毛玻璃卡片 */
