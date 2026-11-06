@@ -3787,8 +3787,7 @@ select.mt5700-select {
    短信中心 · IM 会话界面
    --------------------------------------------------------------------------
    视觉参照 sms_im_demo：左侧会话列表 + 右侧聊天气泡，收发双方均显示头像。
-   色系沿用演示稿的蓝紫配色（页面底色 #edf3fc、发送气泡 #2997f3 系），
-   按要求保持该色系不变，不随 LuCI 主题变量改写。
+   保留演示稿布局；页面色彩在文末使用外观变量适配明暗与配色切换。
 
    响应式：<820px 收成单栏，列表与会话二选一显示。
    演示稿在窄屏直接 `display:none` 掉侧栏，结果手机上进了会话就切不回去，
@@ -6501,4 +6500,281 @@ body.qm-app.qm-dark .mt5700-table tr {
 body.qm-app.qm-light .mt5700-table td,
 body.qm-app.qm-dark .mt5700-table td {
   color: var(--qm-text) !important;
+}
+
+/* v2.43.2 外观变量覆盖旧版皮肤中写死的卡片和操作按钮颜色。 */
+body.qm-app {
+  --mt5700-glass-bg: var(--qm-glass) !important;
+  --mt5700-float-bg: var(--qm-surface) !important;
+  --mt5700-border-focus: var(--qm-accent-border) !important;
+  --mt5700-divider: var(--qm-border-soft) !important;
+  --mt5700-cyan-light: var(--qm-accent-2) !important;
+  --mt5700-cyan-pale: var(--qm-accent-soft) !important;
+  --mt5700-sh-1: var(--qm-shadow) !important;
+  --mt5700-sh-2: var(--qm-shadow-md) !important;
+  --mt5700-sh-3: var(--qm-shadow-lg) !important;
+  --mt5700-sh-float: var(--qm-shadow-lg) !important;
+}
+body.qm-app .mt5700-logbtn-primary,
+body.qm-app .cbi-page-actions .cbi-button-apply,
+body.qm-app .mt5700-sms-shell .mt5700-sms-send,
+body.qm-app .mt5700-sms-shell .mt5700-sms-side-foot .mt5700-btn-primary,
+body.qm-app .mt5700-sms-prompt .at-btn-primary {
+  background: var(--qm-accent-gradient) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-on-accent) !important;
+  box-shadow: 0 4px 14px var(--qm-accent-soft) !important;
+}
+body.qm-app .mt5700-logbtn-accent,
+body.qm-app .mt5700-btn-ghost,
+body.qm-app .mt5700-sms-shell .mt5700-sms-filters button.active {
+  background: var(--qm-accent-soft) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-btn-secondary,
+body.qm-app .cbi-button-neutral,
+body.qm-app .mtconn-btn:not(.mtconn-btn-primary):not(.mtconn-btn-danger),
+body.qm-app .mt-sys-btn-secondary,
+body.qm-app .mt5700-sms-prompt .at-btn-neutral {
+  background: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+}
+body.qm-app .mt5700-btn-secondary:hover:not(:disabled),
+body.qm-app .cbi-button-neutral:hover:not(:disabled),
+body.qm-app .mt5700-btn-ghost:hover:not(:disabled),
+body.qm-app .mtconn-btn:not(.mtconn-btn-primary):not(.mtconn-btn-danger):hover,
+body.qm-app .mt-sys-btn-secondary:hover,
+body.qm-app .mt-quick-pill:hover,
+body.qm-app .mt-terminal-saved-item .btn:first-child:hover {
+  background: var(--qm-accent-soft) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-accent) !important;
+  box-shadow: 0 4px 12px var(--qm-accent-soft) !important;
+}
+body.qm-app .mt5700-logauto input[type="checkbox"] {
+  accent-color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-logsearch input:focus {
+  border-color: var(--qm-accent) !important;
+  box-shadow: 0 0 0 3px var(--qm-accent-soft) !important;
+}
+
+/* 短信视图采用独立布局；颜色与其他页面使用同一套明暗和配色变量。 */
+body.qm-app .mt5700-sms-shell {
+  --sms-bg: var(--qm-surface-3);
+  --sms-panel: var(--qm-surface);
+  --sms-side: var(--qm-surface-2);
+  --sms-line: var(--qm-border);
+  --sms-text: var(--qm-text);
+  --sms-muted: var(--qm-text-muted);
+  --sms-soft: var(--qm-text-soft);
+  --sms-blue: var(--qm-accent);
+  --sms-blue-deep: var(--qm-accent);
+  --sms-selected: var(--qm-accent-soft);
+  --sms-bubble-in: var(--qm-surface);
+}
+body.qm-app .mt5700-sms-shell :is(.mt5700-sms-layout,.mt5700-sms-chat,.mt5700-sms-msgs) {
+  background: var(--qm-surface-3);
+  border-color: var(--qm-border);
+  color: var(--qm-text);
+}
+body.qm-app .mt5700-sms-shell :is(.mt5700-sms-side,.mt5700-sms-side-head,.mt5700-sms-chat-head,.mt5700-sms-composer,.mt5700-sms-hint) {
+  background: var(--qm-surface);
+  border-color: var(--qm-border);
+  color: var(--qm-text);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-search {
+  background: var(--qm-surface-3);
+  border-color: var(--qm-border);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-search input[type="text"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--qm-text) !important;
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-filters button:not(.active),
+body.qm-app .mt5700-sms-shell .mt5700-sms-date span,
+body.qm-app .mt5700-sms-shell .mt5700-sms-back {
+  background: var(--qm-surface-2);
+  color: var(--qm-text-soft);
+  border-color: var(--qm-border-soft);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-conv:hover {
+  background: var(--qm-surface-2);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-conv.active {
+  background: var(--qm-accent-soft);
+  border-color: var(--qm-accent-border);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-mark,
+body.qm-app .mt5700-sms-shell .mt5700-sms-row.outgoing .mt5700-sms-bubble {
+  background: var(--qm-accent-gradient);
+  border-color: var(--qm-accent-border);
+  color: var(--qm-on-accent);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-row.incoming .mt5700-sms-bubble {
+  background: var(--qm-surface);
+  border-color: var(--qm-border-soft);
+  color: var(--qm-text);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-chat-copy h2,
+body.qm-app .mt5700-sms-shell .mt5700-sms-conv-name {
+  color: var(--qm-text);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-channel {
+  color: var(--qm-text-muted);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-channel-status {
+  background: var(--qm-accent-soft);
+  color: var(--qm-accent);
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-composer textarea,
+body.qm-app .mt5700-sms-prompt .cbi-input-text {
+  background: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-composer textarea:focus,
+body.qm-app .mt5700-sms-prompt .cbi-input-text:focus {
+  border-color: var(--qm-accent) !important;
+  box-shadow: 0 0 0 3px var(--qm-accent-soft) !important;
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-chat-actions .mt5700-btn-ghost {
+  background: transparent !important;
+  color: var(--qm-text-soft) !important;
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-chat-actions .mt5700-btn-ghost:hover:not(:disabled) {
+  background: var(--qm-accent-soft) !important;
+  color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-sms-shell .mt5700-sms-chat-actions .mt5700-btn-danger {
+  color: var(--qm-danger) !important;
+}
+
+/* 日志筛选、状态标签与通用卡片跟随当前强调色。 */
+body.qm-app .mt5700-logtab.active,
+body.qm-app .mt5700-logcatbtn.active {
+  background: var(--qm-accent-gradient) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-on-accent) !important;
+  box-shadow: 0 4px 14px var(--qm-accent-soft) !important;
+}
+body.qm-app .mt5700-logtab:hover:not(.active),
+body.qm-app .mt5700-logcatbtn:hover:not(.active) {
+  background: var(--qm-accent-soft) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-logcatbtn-count,
+body.qm-app .mt5700-logday,
+body.qm-app #qm-hero-model,
+body.qm-app #sig-rat-tag {
+  background: var(--qm-accent-soft) !important;
+  color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-logcatbtn.active .mt5700-logcatbtn-count {
+  background: rgba(255,255,255,.24) !important;
+  color: var(--qm-on-accent) !important;
+}
+body.qm-app .mt5700-card {
+  box-shadow: var(--qm-shadow-md) !important;
+}
+body.qm-app .mt5700-card:hover {
+  box-shadow: var(--qm-shadow-lg) !important;
+}
+body.qm-app .mt5700-card-header {
+  border-color: var(--qm-border-soft) !important;
+}
+body.qm-app .mt5700-table th,
+body.qm-app .mt-mcs-desc {
+  color: var(--qm-text-muted) !important;
+}
+body.qm-app .mt5700-table tr:hover {
+  background: var(--qm-surface) !important;
+  box-shadow: var(--qm-shadow) !important;
+}
+body.qm-app .mt5700-empty-text,
+body.qm-app .mt5700-loading-text,
+body.qm-app :is(.mt-tag-cyan,.mt-tag-purple) {
+  color: var(--qm-accent) !important;
+}
+body.qm-app :is(.mt-tag-cyan,.mt-tag-purple) {
+  background: var(--qm-accent-soft) !important;
+  border-color: var(--qm-accent-border) !important;
+}
+body.qm-app .mt-mcs-box {
+  background: var(--qm-surface-2) !important;
+  border-color: var(--qm-border) !important;
+}
+body.qm-app :is(.mt5700-modal,.cbi-modal-dialog,.modal-dialog,.at-modal-dialog) {
+  background: var(--qm-surface) !important;
+  border-color: var(--qm-border) !important;
+  box-shadow: var(--qm-shadow-lg) !important;
+}
+body.qm-app :is(.mt5700-modal-title,.cbi-modal-title,.modal-title) {
+  color: var(--qm-text) !important;
+}
+body.qm-app :is(.mt5700-modal-body,.cbi-modal-body,.modal-body) {
+  color: var(--qm-text-soft) !important;
+}
+body.qm-app :is(.mt5700-modal-footer,.cbi-modal-actions,.modal-footer) {
+  border-color: var(--qm-border-soft) !important;
+}
+body.qm-app :is(.mt5700-input,.cbi-input-text,input[type="text"],input[type="password"],input[type="number"],input[type="search"],textarea,select) {
+  background-color: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+}
+body.qm-app :is(.mt5700-input,.cbi-input-text,input[type="text"],input[type="password"],input[type="number"],input[type="search"],textarea,select):focus {
+  background-color: var(--qm-surface) !important;
+  border-color: var(--qm-accent) !important;
+  box-shadow: 0 0 0 3px var(--qm-accent-soft) !important;
+}
+body.qm-app select {
+  background-image: none !important;
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  padding-right: 14px !important;
+}
+
+/* 短信弹窗是挂在页面外层的节点，单独补上暗色和选中色。 */
+body.qm-app .mt5700-modal.mt5700-sms-modal {
+  background: var(--qm-surface) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text) !important;
+  box-shadow: var(--qm-shadow-lg) !important;
+}
+body.qm-app .mt5700-sms-modal .mt5700-modal-title::before {
+  background: var(--qm-accent-gradient) !important;
+}
+body.qm-app .mt5700-sms-modal :is(.mt5700-sms-modal-list,.mt5700-sms-opt-row),
+body.qm-app .mt5700-sms-modal .mt5700-sms-modal-list .mt5700-sms-pick-row:hover {
+  background: var(--qm-surface-3);
+  border-color: var(--qm-border-soft);
+  color: var(--qm-text);
+}
+body.qm-app .mt5700-sms-modal :is(.mt5700-sms-archive-row strong,.mt5700-sms-pick-text) {
+  color: var(--qm-text) !important;
+}
+body.qm-app .mt5700-sms-modal :is(.mt5700-hint,.mt5700-sms-archive-row .mt5700-hint) {
+  color: var(--qm-text-muted) !important;
+}
+body.qm-app .mt5700-sms-modal .mt5700-modal-footer {
+  border-color: var(--qm-border-soft) !important;
+}
+body.qm-app .mt5700-sms-modal .mt5700-btn-ghost {
+  background: var(--qm-surface-3) !important;
+  border-color: var(--qm-border) !important;
+  color: var(--qm-text-soft) !important;
+}
+body.qm-app .mt5700-sms-modal .mt5700-btn-ghost:hover:not(:disabled) {
+  background: var(--qm-accent-soft) !important;
+  border-color: var(--qm-accent-border) !important;
+  color: var(--qm-accent) !important;
+}
+body.qm-app .mt5700-sms-modal input[type="checkbox"] {
+  accent-color: var(--qm-accent);
 }

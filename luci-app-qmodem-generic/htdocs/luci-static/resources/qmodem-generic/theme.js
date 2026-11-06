@@ -904,7 +904,7 @@ function apply() {
 			window._qmodem_css_injected = true;
 			var link = document.createElement('link');
 			link.rel = 'stylesheet';
-			link.href = '/luci-static/resources/qmodem-generic/qmodem.css?v=2.43.1';
+			link.href = '/luci-static/resources/qmodem-generic/qmodem.css?v=2.43.2';
 			document.head.appendChild(link);
 		}
 		mountGlobalBg();
