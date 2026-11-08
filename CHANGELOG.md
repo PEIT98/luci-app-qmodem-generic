@@ -3,6 +3,12 @@
 本文件记录 `luci-app-qmodem-generic` 的版本变更。版本号格式为
 `v<PKG_VERSION>-<PKG_RELEASE>-build<运行号>`，与 GitHub Actions 自动发布的 Release 对应。
 
+## [3.0.0-10] - 2026-11-08
+
+- 恢复 QModem stable/旧版 Next 的 `qmodem_sms.list_sms` 会话数据库读取：即使旧版已将短信从 SIM 自动删除，也能显示官方页面的接收与发送历史。
+- 分清新版 `qmodem.sms`、旧版 `qmodem_sms`、模组 `qmodem.get_sms` 三条链路；旧版服务故障明确显示，缺失时才回退模组存储。
+- 旧版数据库短信按记录 ID 删除、标记已读；回复优先调用官方 PDU 发送接口，多段或生成器缺失时使用原有发送链路。
+
 ## [3.0.0-9] - 2026-11-06
 
 - 修复网络优选和 3G/4G/5G 锁频段容器缺少网格样式导致选项纵向排成一列；窄屏按可用宽度自动换列。

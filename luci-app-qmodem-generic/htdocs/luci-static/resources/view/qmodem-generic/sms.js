@@ -64,7 +64,8 @@ function formatTime(value) {
 
 function normalizeMessage(item, position, source) {
 	var rawIndex = pick(item, [ 'index', 'idx', 'id', 'sms_index', 'message_index' ]);
-	var indexes = [], values = Array.isArray(rawIndex) ? rawIndex : rawIndex === '' ? [] : [ rawIndex ];
+	var rawParts = source === 'legacy_db' && Array.isArray(item.part_ids) && item.part_ids.length ? item.part_ids : rawIndex;
+	var indexes = [], values = Array.isArray(rawParts) ? rawParts : rawParts === '' ? [] : [ rawParts ];
 	values.forEach(function(raw) {
 		String(raw).trim().split(/[\s,;]+/).forEach(function(index) {
 			if (/^\d+$/.test(index) && indexes.indexOf(index) === -1) indexes.push(index);
@@ -75,7 +76,7 @@ function normalizeMessage(item, position, source) {
 	var recipient = pick(item, [ 'recipient', 'to', 'dest', 'destination' ]);
 	var type = String(pick(item, [ 'type', 'box', 'folder', 'direction' ])).toLowerCase();
 	var stat = String(pick(item, [ 'stat', 'status', 'state' ])).toLowerCase();
-	var unread = stat.indexOf('unread') !== -1 || stat.indexOf('rec unread') !== -1 || type.indexOf('unread') !== -1 || item.read === false || item.read === 0 || item.read === '0';
+	var unread = stat.indexOf('unread') !== -1 || stat.indexOf('rec unread') !== -1 || type.indexOf('unread') !== -1 || item.read === false || item.read === 0 || item.read === '0' || item.is_read === false || item.is_read === 0;
 	var direction = (type.indexOf('sent') !== -1 || type.indexOf('out') !== -1 || stat.indexOf('sto sent') !== -1 || (!sender && recipient)) ? 'out' : 'in';
 	var number = direction === 'out' ? (recipient || sender || _('未知号码')) : (sender || recipient || _('未知号码'));
 	var text = pick(item, [ 'content', 'text', 'message', 'body', 'data' ]);
@@ -86,6 +87,7 @@ function normalizeMessage(item, position, source) {
 		id: indexes[0] != null ? indexes[0] : (item.id || position),
 		indexes: indexes,
 		source: source || 'modem',
+		smsType: /^(received|sent)$/.test(type) ? type : '',
 		direction: direction,
 		number: number,
 		text: text,
@@ -195,7 +197,7 @@ return view.extend({
 
 	settingsModal: function(messages) {
 		var self = this;
-		var database = this.smsSource === 'database';
+		var database = this.smsSource === 'database' || this.smsSource === 'legacy_db';
 		var tdtech = controls.supportsTdTechAt(this.section);
 		var smsc = E('input', { 'class': 'cbi-input-text', 'placeholder': '--' });
 		var ims = E('select', { 'class': 'cbi-input-select' }, [ E('option', { 'value': '1' }, _('Enabled')), E('option', { 'value': '0' }, _('Disabled')) ]);
@@ -291,7 +293,7 @@ return view.extend({
 
 		this.section = res.section;
 		this.smsSource = res.sms && res.sms._smsSource || 'modem';
-		var database = this.smsSource === 'database';
+		var database = this.smsSource === 'database' || this.smsSource === 'legacy_db';
 
 		var selfDeleted = this.smsDeletedKeys || {};
 		var modemMessages = parseMessages(res.sms).filter(function(msg) { return !selfDeleted[smsMessageKey(msg)]; });
@@ -305,6 +307,8 @@ return view.extend({
 
 		/* 顶层容器：完全复刻 MT5700 SMS Shell，删除任何英雄栏 */
 		var shell = E('div', { 'class': 'mt5700-page mt5700-sms-shell qm-app' + (enter ? ' qm-enter' : '') });
+		if ((res.errors || []).length)
+			shell.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin:8px 0' }, res.errors.join('；')));
 
 		var modems = self.modems || (controls.getModemSectionsSync ? controls.getModemSectionsSync() : []);
 		var modemBar = (controls.renderModemBar && modems.length > 0) ? controls.renderModemBar(modems, res.section, function(id) {
@@ -535,14 +539,14 @@ return view.extend({
 				]);
 
 				item.addEventListener('click', function() {
-					selectConversation(g.number);
+				selectConversation(g.number, true);
 				});
 				convList.appendChild(item);
 			});
 		}
 
 		/* 交互逻辑：选择某个会话 */
-		function selectConversation(num) {
+		function selectConversation(num, markRead) {
 			selected = num;
 			self.smsSelected = num;
 			chatTitle.textContent = num;
@@ -552,6 +556,16 @@ return view.extend({
 
 			renderContactList();
 			renderChatMessages();
+			if (markRead) {
+				var current = groups.find(function(item) { return item.number === num; });
+				var unread = current ? current.messages.filter(function(item) { return item.unread; }) : [];
+				if (unread.length) controls.markSmsRead(self.section, unread).then(function() {
+					unread.forEach(function(item) { item.unread = false; });
+					renderContactList();
+				}).catch(function(err) {
+					controls.notify(null, E('p', {}, (err && err.message) || String(err)), 'danger');
+				});
+			}
 		}
 
 		/* 交互逻辑：新建短信 */
@@ -678,8 +692,8 @@ return view.extend({
 							self.smsSending = true;
 							sendBtn.disabled = true;
 							textarea.disabled = true;
-							controls.sendSmsInbox(self.section, targetNumber, bodyText, self.smsSource).then(function() {
-								if (!database) self.saveSent(targetNumber, bodyText);
+							controls.sendSmsInbox(self.section, targetNumber, bodyText, self.smsSource).then(function(result) {
+								if (!database || result && result._smsLocalHistory) self.saveSent(targetNumber, bodyText);
 								textarea.value = '';
 								controls.notify(null, E('p', {}, _('短信发送成功。')));
 								setTimeout(function() { window.location.reload(); }, 900);

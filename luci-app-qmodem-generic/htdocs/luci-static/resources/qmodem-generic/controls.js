@@ -221,6 +221,12 @@ var callRemoveModem = rpc.declare({ object: 'qmodem', method: 'remove_modem', pa
 
 /* 短信守护进程 qmodem.sms（qmodem_smsd） */
 var callSmsConfig = rpc.declare({ object: 'qmodem.sms', method: 'config_get', params: ['modem_id'], expect: { }, nobatch: true, reject: true });
+/* QModem stable/旧版 Next 的会话数据库使用 qmodem_sms（下划线），
+ * 与新版守护进程 qmodem.sms 是两个独立接口。 */
+var callOldSmsList = rpc.declare({ object: 'qmodem_sms', method: 'list_sms', params: ['config_section'], expect: { }, nobatch: true, reject: true });
+var callOldSmsDelete = rpc.declare({ object: 'qmodem_sms', method: 'delete_sms', params: ['config_section', 'type', 'ids'], expect: { }, nobatch: true, reject: true });
+var callOldSmsMarkRead = rpc.declare({ object: 'qmodem_sms', method: 'mark_read', params: ['config_section', 'ids'], expect: { }, nobatch: true, reject: true });
+var callOldSmsSend = rpc.declare({ object: 'qmodem_sms', method: 'send_sms', params: ['config_section', 'recipient', 'pdu', 'content', 'conversation_contact', 'country_code'], expect: { }, nobatch: true, reject: true });
 var callSmsList = rpc.declare({ object: 'qmodem.sms', method: 'list', params: ['modem_id', 'limit', 'offset'], expect: { }, nobatch: true, reject: true });
 var callSmsSend = rpc.declare({ object: 'qmodem.sms', method: 'send', params: ['modem_id', 'recipient', 'content'], expect: { }, nobatch: true, reject: true });
 var callSmsDelete = rpc.declare({ object: 'qmodem.sms', method: 'delete', params: ['modem_id', 'id'], expect: { }, nobatch: true, reject: true });
@@ -937,6 +943,48 @@ function getSms(section) {
 }
 
 var smsServiceMissingUntil = 0;
+var oldSmsMissingUntil = 0;
+var oldSmsStore = {};
+var oldSmsInFlight = {};
+
+function readOldSms(section) {
+	var saved = oldSmsStore[section];
+	if (oldSmsInFlight[section]) return oldSmsInFlight[section];
+	if (saved && Date.now() - saved.ts < LEGACY_SMS_TTL) return Promise.resolve(saved.value);
+	var task = withTimeoutReject(callOldSmsList(section), 30000, _('读取 QModem 会话短信超时')).then(function(raw) {
+		if (!raw || raw.error || !Array.isArray(raw.conversations))
+			throw new Error((raw && raw.error) || _('QModem 未返回会话短信列表。'));
+		var messages = [];
+		raw.conversations.forEach(function(conv) {
+			if (!conv || !Array.isArray(conv.messages)) return;
+			conv.messages.forEach(function(msg) {
+				if (msg && typeof msg === 'object') messages.push(msg);
+			});
+		});
+		var value = { messages: messages, _smsSource: 'legacy_db' };
+		oldSmsStore[section] = { ts: Date.now(), value: value };
+		return value;
+	});
+	oldSmsInFlight[section] = task.then(function(value) {
+		delete oldSmsInFlight[section]; return value;
+	}, function(err) {
+		delete oldSmsInFlight[section]; throw err;
+	});
+	return oldSmsInFlight[section];
+}
+
+function readOldOrModemSms(section) {
+	if (Date.now() < oldSmsMissingUntil) return readLegacySms(section).then(function(raw) {
+		return Object.assign({}, Array.isArray(raw) ? { messages: raw } : (raw || {}), { _smsSource: 'modem' });
+	});
+	return readOldSms(section).catch(function(err) {
+		if (!isMissingSmsService(err)) throw err;
+		oldSmsMissingUntil = Date.now() + 60000;
+		return readLegacySms(section).then(function(raw) {
+			return Object.assign({}, Array.isArray(raw) ? { messages: raw } : (raw || {}), { _smsSource: 'modem' });
+		});
+	});
+}
 
 function smsServiceResult(result) {
 	if (!result || typeof result !== 'object' || result.error || result.status === 'error' || result.success === false)
@@ -998,8 +1046,10 @@ function getSmsModemList() {
 
 function getSmsInbox(section) {
 	return getSmsServiceConfig(section).then(function(config) {
-		/* direct 模式与旧版固件都直读模组（带 TTL 与在途去重）。 */
-		if (!config || config.mode === 'direct')
+		/* 旧版先读官方会话数据库；它可能已把 SIM 短信读出并自动删除。
+		 * 两种服务都缺失才退到 qmodem.get_sms。 */
+		if (!config) return readOldOrModemSms(section);
+		if (config.mode === 'direct')
 			return readLegacySms(section).then(function(raw) {
 				if (raw && raw.error) throw new Error(raw.error);
 				return Object.assign({}, Array.isArray(raw) ? { messages: raw } : (raw || {}), {
@@ -1030,6 +1080,10 @@ function getSmsInbox(section) {
 }
 
 function refreshSmsInbox(section, source) {
+	if (source === 'legacy_db') {
+		delete oldSmsStore[section];
+		return readOldSms(section);
+	}
 	if (source !== 'database') {
 		invalidateLegacySms(section);
 		return readLegacySms(section);
@@ -1039,6 +1093,29 @@ function refreshSmsInbox(section, source) {
 
 /* 数据库模式的发送不做旧接口重试，超时/失败后交由用户核对发送结果。 */
 function sendSmsInbox(section, phoneNumber, content, source) {
+	if (source === 'legacy_db') {
+		/* 旧接口需要 PDU；按需加载官方 Next 的生成器，不使其成为插件硬依赖。
+		 * 多段短信走现有 qmodem.send_sms，避免官方旧界面只发送第一段。 */
+		if (content.length <= 70 && typeof L !== 'undefined' && typeof L.require === 'function')
+			return L.require('qmodem.sms-pdu').then(function(parser) {
+				var pdus = parser.generate({ receiver: phoneNumber, text: content, encoding: '16bit' });
+				if (!Array.isArray(pdus) || pdus.length !== 1) throw new Error(_('无法生成完整短信 PDU。'));
+				return withTimeoutReject(callOldSmsSend(section, phoneNumber, pdus[0], content, '', ''), 60000,
+					_('短信发送超时，请核对官方发送记录后再决定是否重试。')).then(function(result) {
+					if (!result || result.error || result.success !== true)
+						throw new Error(result && result.error || _('QModem 未确认发送成功。'));
+					delete oldSmsStore[section];
+					return result;
+				});
+			}, function() {
+				return sendSms(section, phoneNumber, content).then(smsServiceResult).then(function(result) {
+					result._smsLocalHistory = true; return result;
+				});
+			});
+		return sendSms(section, phoneNumber, content).then(smsServiceResult).then(function(result) {
+			result._smsLocalHistory = true; return result;
+		});
+	}
 	if (source !== 'database') return sendSms(section, phoneNumber, content).then(smsServiceResult);
 	return withTimeoutReject(callSmsSend(section, phoneNumber, content), 60000, _('短信发送超时，请核对发送记录后再决定是否重试。')).then(smsServiceAction);
 }
@@ -1085,6 +1162,19 @@ function smsStorageIndexes(indexes) {
 	return tokens;
 }
 function deleteSmsMessage(section, message) {
+	if (message.source === 'legacy_db') {
+		var ids = (message.indexes || [ message.index ]).map(Number).filter(function(id) {
+			return Number.isSafeInteger(id) && id > 0;
+		});
+		if (!ids.length || !/^(received|sent)$/.test(message.smsType || ''))
+			return Promise.reject(new Error(_('缺少有效的官方短信记录编号。')));
+		return withTimeoutReject(callOldSmsDelete(section, message.smsType, ids), 10000,
+			_('删除官方短信超时')).then(function(result) {
+			if (!result || result.error || result.success !== true || Number(result.deleted) < ids.length)
+				throw new Error(result && result.error || _('官方短信数据库未确认删除。'));
+			delete oldSmsStore[section]; return result;
+		});
+	}
 	if (message.source === 'database') {
 		var id = Number(message.index);
 		if (!Number.isSafeInteger(id) || id <= 0) return Promise.reject(new Error(_('无效的短信记录编号。')));
@@ -1124,6 +1214,16 @@ function deleteSmsMessage(section, message) {
 }
 
 function markSmsRead(section, messages) {
+	var oldIds = (messages || []).filter(function(item) {
+		return item.source === 'legacy_db' && item.unread && item.smsType === 'received';
+	}).reduce(function(ids, item) {
+		return ids.concat(item.indexes || [ item.index ]);
+	}, []).map(Number).filter(function(id) { return Number.isSafeInteger(id) && id > 0; });
+	if (oldIds.length) return withTimeoutReject(callOldSmsMarkRead(section, oldIds), 10000,
+		_('标记短信已读超时')).then(function(result) {
+		if (!result || result.error || result.success !== true) throw new Error(result && result.error || _('标记短信已读失败。'));
+		delete oldSmsStore[section]; return result;
+	});
 	return (messages || []).filter(function(item) { return item.source === 'database' && item.unread; }).reduce(function(chain, item) {
 		return chain.then(function() {
 			return withTimeoutReject(callSmsMarkRead(section, Number(item.index)), 10000, _('标记短信已读超时')).then(smsServiceAction);

@@ -36,6 +36,7 @@ function makeRuntime() {
 	var ubusDelayMs = 0;       /* 模拟 qmodem 对象（AT 驱动）的慢速 */
 	var failAll = false;       /* 模拟模组完全失联：所有 qmodem 调用 reject */
 	var smsApi = null;
+	var oldSmsApi = null;
 	var modemSmsApi = null;
 	var modemImeiApi = null;
 	var uciCommitError = null;
@@ -46,6 +47,7 @@ function makeRuntime() {
 	var statsResetResult = null;    /* 覆盖 qmodem_stats/stats_reset 的返回（测失败载荷） */
 	var removeModemResult = null;   /* 覆盖 qmodem/remove_modem 的返回（测退出码语义） */
 	var qmodemOverrides = {};       /* 按方法覆盖 qmodem 返回（测失败载荷） */
+	var luciGlobal = { env: { rpctimeout: 20 } };
 
 	var NOW = Math.floor(Date.now() / 1000);
 
@@ -122,6 +124,8 @@ function makeRuntime() {
 				body = uciCommitError ? { __rpcError: uciCommitError } : {};
 			} else if (object === 'qmodem.sms') {
 				body = smsApi ? smsApi(method, p) : { __rpcError: 'RPC call to qmodem.sms/config_get failed with ubus code 4: Not found' };
+			} else if (object === 'qmodem_sms') {
+				body = oldSmsApi ? oldSmsApi(method, p) : { __rpcError: 'RPC call to qmodem_sms/list_sms failed with ubus code 4: Not found' };
 			} else if (object === 'qmodem_stats') {
 				body = method === 'daily_stats'
 					? { config_section: p.config_section, updated_at: NOW, available: 1,
@@ -394,7 +398,7 @@ function makeRuntime() {
 			'form', 'widgets', 'validation', 'request', 'session', 'xhr', 'controls', 'theme',
 			src);
 		return fn(
-			makeRequire(modules), { env: { rpctimeout: 20 } },
+			makeRequire(modules), luciGlobal,
 			{ location: { protocol: 'http:' }, setTimeout: setTimeout, clearTimeout: clearTimeout,
 			  localStorage: localStorage,
 			  addEventListener: function(ev, cb) { (listeners[ev] = listeners[ev] || []).push(cb); },
@@ -417,6 +421,8 @@ function makeRuntime() {
 		setUbusDelay: function(ms) { ubusDelayMs = ms; },
 		setFailAll: function(v) { failAll = !!v; },
 		setSmsApi: function(handler) { smsApi = handler; },
+		setOldSmsApi: function(handler) { oldSmsApi = handler; },
+		setLuCIRequire: function(handler) { luciGlobal.require = handler; },
 		setModemSmsApi: function(handler) { modemSmsApi = handler; },
 		setModemImeiApi: function(handler) { modemImeiApi = handler; },
 		setUciCommitError: function(error) { uciCommitError = error; },
@@ -748,6 +754,50 @@ async function testSmsSources() {
 	ok('数据库列表使用动态模组标识 modem_id', db.rt.calls.every(function(c) { return c.params.modem_id === '6_2'; }));
 	assertEq('读取数据库不调用旧版 get_sms', db.rt.countCalls('qmodem','get_sms'), 0);
 	assertEq('数据库页面加载不主动同步串口', db.rt.countCalls('qmodem.sms','sync'), 0);
+	assertEq('新版服务可用时不探测旧版数据库', db.rt.countCalls('qmodem_sms','list_sms'), 0);
+	var old = runtime();
+	old.rt.setOldSmsApi(function(method) {
+		if (method === 'list_sms') return { conversations: [{ contact:'10010', messages:[
+			{id:11,type:'received',sender:'10010',content:'旧版数据库短信',timestamp:1792239000,is_read:false},
+			{id:12,type:'sent',recipient:'10010',content:'旧版发送历史',timestamp:1792239060}
+		] }] };
+		if (method === 'delete_sms') return { success:true, deleted:2 };
+		if (method === 'mark_read') return { success:true, marked:1 };
+		if (method === 'send_sms') return { success:true, id:14 };
+		return { error:'unexpected method' };
+	});
+	var oldInbox = await old.controls.getSmsInbox('6_1');
+	assertEq('旧版官方会话数据库优先于空 SIM', oldInbox._smsSource, 'legacy_db');
+	assertEq('旧版会话展开接收和发送记录', oldInbox.messages.length, 2);
+	/* 解析真实短信视图的消息转换函数，确保会话数据进入气泡而非只显示 0。 */
+	var viewSource = fs.readFileSync(path.join(ROOT,'htdocs/luci-static/resources/view/qmodem-generic/sms.js'),'utf8');
+	var viewHelpers = new Function('controls','_', viewSource.split('return view.extend({')[0] + '\nreturn { parseMessages: parseMessages };')({element:function() {}}, function(s) {return s;});
+	var parsedOld = viewHelpers.parseMessages(oldInbox);
+	assertEq('短信页面渲染旧版数据库正文', parsedOld[0].text, '旧版数据库短信');
+	assertEq('旧版数据库未读状态正确', parsedOld[0].unread, true);
+	assertEq('旧版接收消息保留删除类型', parsedOld[0].smsType, 'received');
+	assertEq('旧版发送记录保留方向', parsedOld[1].direction, 'out');
+	var parts = viewHelpers.parseMessages({ _smsSource:'legacy_db', messages:[{id:11,part_ids:[11,13],type:'received',sender:'10010',content:'多段短信'}] });
+	assertEq('旧版分段短信保留全部数据库 ID', parts[0].indexes.join(','), '11,13');
+	assertEq('旧版会话查询使用真实模组节', old.rt.calls.filter(function(c) { return c.object === 'qmodem_sms'; })[0].params.config_section, '6_1');
+	assertEq('旧版数据库有短信不再直读空 SIM', old.rt.countCalls('qmodem','get_sms'), 0);
+	await old.controls.getSmsInbox('6_1');
+	assertEq('轮询期间不重复占用 AT 读取旧数据库', old.rt.countCalls('qmodem_sms','list_sms'), 1);
+	await old.controls.deleteSmsMessage('6_1', {source:'legacy_db',smsType:'received',indexes:['11','13']});
+	assertEq('旧版数据库按消息 ID 删除分段', JSON.stringify(old.rt.calls.filter(function(c) {return c.object === 'qmodem_sms' && c.method === 'delete_sms';})[0].params), JSON.stringify({config_section:'6_1',type:'received',ids:[11,13]}));
+	await old.controls.markSmsRead('6_1', [{source:'legacy_db',smsType:'received',indexes:['11'],unread:true}]);
+	assertEq('旧版数据库按 ID 标记已读', old.rt.countCalls('qmodem_sms','mark_read'), 1);
+	old.rt.setLuCIRequire(function(name) {
+		return name === 'qmodem.sms-pdu' ? Promise.resolve({generate:function() {return ['001122'];}}) : Promise.reject(new Error('missing module'));
+	});
+	await old.controls.sendSmsInbox('6_1','10010','旧版回复','legacy_db');
+	assertEq('旧版回复使用官方短信数据库接口', old.rt.countCalls('qmodem_sms','send_sms'), 1);
+	assertEq('旧版官方发送携带 PDU 和真实模组节', JSON.stringify(old.rt.calls.filter(function(c) {return c.object === 'qmodem_sms' && c.method === 'send_sms';})[0].params), JSON.stringify({config_section:'6_1',recipient:'10010',pdu:'001122',content:'旧版回复',conversation_contact:'',country_code:''}));
+	assertEq('旧版官方发送不重复走模组接口', old.rt.countCalls('qmodem','send_sms'), 0);
+	var oldBroken = runtime();
+	oldBroken.rt.setOldSmsApi(function() { return {error:'official database unavailable'}; });
+	await rejects('旧版数据库故障不伪装为空 SIM', oldBroken.controls.getSmsInbox('6_1'), /official database unavailable/);
+	assertEq('旧版数据库失败不偷读 SIM', oldBroken.rt.countCalls('qmodem','get_sms'), 0);
 	await db.controls.sendSmsInbox('6_2','10010','测试发送','database');
 	var send = db.rt.calls.filter(function(c) { return c.object === 'qmodem.sms' && c.method === 'send'; })[0];
 	assertEq('发送使用短信服务并保存数据库历史', JSON.stringify(send.params), JSON.stringify({modem_id:'6_2',recipient:'10010',content:'测试发送'}));
